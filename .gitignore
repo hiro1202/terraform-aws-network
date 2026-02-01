@@ -37,3 +37,6 @@ __pycache__/
 # Local editors/macos files
 .DS_Store
 .idea
+
+# Claude Code
+.claude/

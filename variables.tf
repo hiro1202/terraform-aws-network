@@ -20,6 +20,16 @@ variable "private_subnets" {
   default = []
 }
 
+variable "public_subnets" {
+  description = "List of public subnet configurations"
+  type = list(object({
+    cidr              = string
+    availability_zone = string
+    name              = string
+  }))
+  default = []
+}
+
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)
