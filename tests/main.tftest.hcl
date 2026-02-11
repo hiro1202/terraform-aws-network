@@ -1,55 +1,127 @@
-mock_provider "aws" {}
-
-run "default_vpc" {
-  command = plan
-
-  assert {
-    condition     = output.vpc_cidr_block == "10.0.0.0/16"
-    error_message = "Default VPC CIDR should be 10.0.0.0/16"
-  }
-
-  assert {
-    condition     = length(output.private_subnet_ids) == 0
-    error_message = "No private subnets should be created by default"
-  }
-
-  assert {
-    condition     = length(output.public_subnet_ids) == 0
-    error_message = "No public subnets should be created by default"
+mock_provider "aws" {
+  mock_data "aws_availability_zones" {
+    defaults = {
+      names = ["ap-northeast-1a", "ap-northeast-1c", "ap-northeast-1d"]
+    }
   }
 }
 
-run "with_subnets" {
+# 共通デフォルト — 各runブロックでは差分のみ上書き
+variables {
+  name            = "my-app"
+  vpc_cidr        = "10.0.0.0/16"
+  private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+}
+
+################################################################################
+# VPC
+################################################################################
+
+run "vpc_defaults" {
+  command = plan
+
+  assert {
+    condition     = aws_vpc.this.cidr_block == "10.0.0.0/16"
+    error_message = "VPC CIDR should match the specified value"
+  }
+
+  assert {
+    condition     = aws_vpc.this.enable_dns_hostnames == true && aws_vpc.this.enable_dns_support == true
+    error_message = "DNS hostnames and support should be enabled by default"
+  }
+
+  assert {
+    condition     = aws_vpc.this.tags["Name"] == "my-app-vpc"
+    error_message = "VPC Name tag should follow '{name}-vpc' convention"
+  }
+}
+
+run "vpc_dns_can_be_disabled" {
   command = plan
 
   variables {
-    vpc_cidr        = "172.16.0.0/16"
-    private_subnets = ["172.16.1.0/24", "172.16.2.0/24"]
-    public_subnets  = ["172.16.101.0/24"]
+    enable_dns_hostnames = false
+    enable_dns_support   = false
   }
 
   assert {
-    condition     = output.vpc_cidr_block == "172.16.0.0/16"
-    error_message = "VPC CIDR should match input"
+    condition     = aws_vpc.this.enable_dns_hostnames == false && aws_vpc.this.enable_dns_support == false
+    error_message = "DNS settings should be disableable"
+  }
+}
+
+################################################################################
+# Subnets - 正常系
+################################################################################
+
+run "subnets_three_az" {
+  command = plan
+
+  assert {
+    condition     = length(aws_subnet.private) == 3 && length(aws_subnet.public) == 3
+    error_message = "Subnet count should match the number of CIDRs provided"
   }
 
   assert {
-    condition     = length(output.private_subnet_ids) == 2
-    error_message = "Should create 2 private subnets"
+    condition     = toset([for s in aws_subnet.private : s.availability_zone]) == toset(["ap-northeast-1a", "ap-northeast-1c", "ap-northeast-1d"])
+    error_message = "Private subnets should be distributed across all AZs"
   }
 
   assert {
-    condition     = length(output.public_subnet_ids) == 1
-    error_message = "Should create 1 public subnet"
+    condition     = toset([for s in aws_subnet.public : s.availability_zone]) == toset(["ap-northeast-1a", "ap-northeast-1c", "ap-northeast-1d"])
+    error_message = "Public subnets should be distributed across all AZs"
   }
 
   assert {
-    condition     = tolist(output.private_subnet_cidrs) == tolist(["172.16.1.0/24", "172.16.2.0/24"])
-    error_message = "Private subnet CIDRs should match input"
+    condition     = aws_subnet.private[0].tags["Name"] == "my-app-private-0"
+    error_message = "Private subnet Name tag should follow '{name}-private-{index}' convention"
   }
 
   assert {
-    condition     = tolist(output.public_subnet_cidrs) == tolist(["172.16.101.0/24"])
-    error_message = "Public subnet CIDRs should match input"
+    condition     = aws_subnet.public[0].tags["Name"] == "my-app-public-0"
+    error_message = "Public subnet Name tag should follow '{name}-public-{index}' convention"
   }
+}
+
+run "subnets_empty" {
+  command = plan
+
+  variables {
+    private_subnets = []
+    public_subnets  = []
+  }
+
+  assert {
+    condition     = length(aws_subnet.private) == 0 && length(aws_subnet.public) == 0
+    error_message = "No subnets should be created when lists are empty"
+  }
+}
+
+################################################################################
+# Variable Validation - ネガティブパス (expect_failures)
+################################################################################
+
+run "invalid_vpc_cidr_should_fail" {
+  command = plan
+
+  variables {
+    vpc_cidr = "not-a-cidr"
+  }
+
+  expect_failures = [
+    var.vpc_cidr,
+  ]
+}
+
+run "invalid_subnet_cidr_should_fail" {
+  command = plan
+
+  variables {
+    private_subnets = ["invalid"]
+  }
+
+  expect_failures = [
+    var.private_subnets,
+  ]
 }
