@@ -1,37 +1,44 @@
+variable "name" {
+  description = "すべてのリソースの識別子として使用される名前"
+  type        = string
+  default     = ""
+}
+
+################################################################################
+# VPC
+################################################################################
 variable "vpc_cidr" {
-  description = "CIDR block for the VPC"
+  description = "VPCのCIDRブロック"
   type        = string
   default     = "10.0.0.0/16"
 }
 
-variable "vpc_name" {
-  description = "Name of the VPC"
-  type        = string
-  default     = "main"
+variable "enable_dns_hostnames" {
+  description = "VPCでDNSホスト名を有効にする場合はtrue"
+  type        = bool
+  default     = true
 }
 
+variable "enable_dns_support" {
+  description = "VPCでDNSサポートを有効にする場合はtrue"
+  type        = bool
+  default     = true
+}
+
+################################################################################
+# Private Subnets
+################################################################################
 variable "private_subnets" {
-  description = "List of private subnet configurations"
-  type = list(object({
-    cidr              = string
-    availability_zone = string
-    name              = string
-  }))
-  default = []
+  description = "プライベートサブネットのCIDRブロックリスト"
+  type        = list(string)
+  default     = []
 }
 
+################################################################################
+# Publiс Subnets
+################################################################################
 variable "public_subnets" {
-  description = "List of public subnet configurations"
-  type = list(object({
-    cidr              = string
-    availability_zone = string
-    name              = string
-  }))
-  default = []
-}
-
-variable "tags" {
-  description = "Tags to apply to all resources"
-  type        = map(string)
-  default     = {}
+  description = "パブリックサブネットのCIDRブロックリスト"
+  type        = list(string)
+  default     = []
 }

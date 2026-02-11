@@ -23,14 +23,9 @@ run "with_subnets" {
   command = plan
 
   variables {
-    vpc_cidr = "172.16.0.0/16"
-    private_subnets = [
-      { cidr = "172.16.1.0/24", availability_zone = "ap-northeast-1a", name = "private-a" },
-      { cidr = "172.16.2.0/24", availability_zone = "ap-northeast-1c", name = "private-c" },
-    ]
-    public_subnets = [
-      { cidr = "172.16.101.0/24", availability_zone = "ap-northeast-1a", name = "public-a" },
-    ]
+    vpc_cidr        = "172.16.0.0/16"
+    private_subnets = ["172.16.1.0/24", "172.16.2.0/24"]
+    public_subnets  = ["172.16.101.0/24"]
   }
 
   assert {
