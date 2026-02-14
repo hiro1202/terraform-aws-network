@@ -1,7 +1,11 @@
 variable "name" {
   description = "すべてのリソースの識別子として使用される名前"
   type        = string
-  default     = ""
+
+  validation {
+    condition     = length(var.name) > 0
+    error_message = "nameは空文字列にできません"
+  }
 }
 
 ################################################################################
@@ -28,53 +32,6 @@ variable "enable_dns_support" {
   description = "VPCでDNSサポートを有効にする場合はtrue"
   type        = bool
   default     = true
-}
-
-################################################################################
-# Internet Gateway
-################################################################################
-variable "create_internet_gateway" {
-  description = "Internet Gatewayを作成する場合はtrue"
-  type        = bool
-  default     = false
-}
-
-################################################################################
-# NAT Gateway
-################################################################################
-variable "create_nat_gateway" {
-  description = "NAT Gatewayを作成する場合はtrue"
-  type        = bool
-  default     = false
-
-  validation {
-    condition = (
-      !var.create_nat_gateway
-      || (
-        var.create_internet_gateway
-        && length(var.public_subnets) > 0
-        && length(var.private_subnets) > 0
-      )
-    )
-    error_message = "NAT Gatewayを作成する場合はcreate_internet_gateway=trueかつpublic_subnetsとprivate_subnetsに1つ以上指定してください"
-  }
-}
-
-variable "nat_gateway_subnet_index" {
-  description = "NAT Gatewayを配置するpublic_subnetsのインデックス"
-  type        = number
-  default     = 0
-
-  validation {
-    condition = (
-      !var.create_nat_gateway
-      || (
-        var.nat_gateway_subnet_index >= 0
-        && var.nat_gateway_subnet_index < length(var.public_subnets)
-      )
-    )
-    error_message = "nat_gateway_subnet_indexはpublic_subnetsの範囲内で指定してください"
-  }
 }
 
 ################################################################################
@@ -109,3 +66,34 @@ variable "public_subnets" {
     error_message = "パブリックサブネットを作成する場合はcreate_internet_gatewayをtrueにしてください"
   }
 }
+
+################################################################################
+# Internet Gateway
+################################################################################
+variable "create_internet_gateway" {
+  description = "Internet Gatewayを作成する場合はtrue"
+  type        = bool
+  default     = false
+}
+
+################################################################################
+# NAT Gateway
+################################################################################
+variable "create_nat_gateway" {
+  description = "NAT Gatewayを作成する場合はtrue"
+  type        = bool
+  default     = false
+
+  validation {
+    condition = (
+      !var.create_nat_gateway
+      || (
+        var.create_internet_gateway
+        && length(var.public_subnets) > 0
+        && length(var.private_subnets) > 0
+      )
+    )
+    error_message = "NAT Gatewayを作成する場合はcreate_internet_gateway=trueかつpublic_subnetsとprivate_subnetsに1つ以上指定してください"
+  }
+}
+

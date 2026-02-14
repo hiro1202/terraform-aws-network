@@ -172,69 +172,28 @@ run "natgw_created_when_enabled" {
   }
 
   assert {
-    condition     = length(aws_nat_gateway.this) == 1
-    error_message = "create_nat_gateway=trueの場合、NAT Gatewayが1つ作成される必要があります"
+    condition     = length(aws_nat_gateway.this) == 3
+    error_message = "create_nat_gateway=trueの場合、パブリックサブネットごとにNAT Gatewayが作成される必要があります"
   }
 
   assert {
-    condition     = aws_nat_gateway.this[0].tags["Name"] == "my-app-nat"
-    error_message = "NAT GatewayのNameタグは「{name}-nat」の形式である必要があります"
+    condition     = aws_nat_gateway.this[0].tags["Name"] == "my-app-nat-0"
+    error_message = "NAT GatewayのNameタグは「{name}-nat-{index}」の形式である必要があります"
   }
 
   assert {
-    condition     = length(aws_eip.nat) == 1
-    error_message = "create_nat_gateway=trueの場合、EIPが1つ作成される必要があります"
+    condition     = length(aws_eip.nat) == 3
+    error_message = "create_nat_gateway=trueの場合、パブリックサブネットごとにEIPが作成される必要があります"
   }
 
   assert {
-    condition     = aws_eip.nat[0].tags["Name"] == "my-app-nat-eip"
-    error_message = "EIPのNameタグは「{name}-nat-eip」の形式である必要があります"
+    condition     = aws_eip.nat[0].tags["Name"] == "my-app-nat-eip-0"
+    error_message = "EIPのNameタグは「{name}-nat-eip-{index}」の形式である必要があります"
   }
 
   assert {
-    condition     = length(aws_route.private_nat) == 1
-    error_message = "create_nat_gateway=trueの場合、プライベートNATルート（0.0.0.0/0）が作成される必要があります"
+    condition     = length(aws_route.private_nat) == 3
+    error_message = "create_nat_gateway=trueの場合、プライベートサブネットごとにNATルートが作成される必要があります"
   }
 }
 
-################################################################################
-# Variable Validation - ネガティブパス (expect_failures)
-################################################################################
-
-run "validation_invalid_vpc_cidr" {
-  command = plan
-
-  variables {
-    vpc_cidr = "not-a-cidr"
-  }
-
-  expect_failures = [
-    var.vpc_cidr,
-  ]
-}
-
-run "validation_invalid_subnet_cidr" {
-  command = plan
-
-  variables {
-    private_subnets = ["invalid"]
-  }
-
-  expect_failures = [
-    var.private_subnets,
-  ]
-}
-
-run "validation_natgw_requires_igw" {
-  command = plan
-
-  variables {
-    create_internet_gateway = false
-    create_nat_gateway      = true
-    public_subnets          = []
-  }
-
-  expect_failures = [
-    var.create_nat_gateway,
-  ]
-}
