@@ -78,7 +78,7 @@ resource "aws_subnet" "public" {
 }
 
 resource "aws_route_table" "public" {
-  count = length(var.public_subnets) > 0 ? 1 : 0
+  count  = length(var.public_subnets) > 0 ? 1 : 0
   vpc_id = aws_vpc.this.id
 
   tags = {
