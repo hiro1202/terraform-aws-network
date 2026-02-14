@@ -31,6 +31,53 @@ variable "enable_dns_support" {
 }
 
 ################################################################################
+# Internet Gateway
+################################################################################
+variable "create_internet_gateway" {
+  description = "Internet Gatewayを作成する場合はtrue"
+  type        = bool
+  default     = false
+}
+
+################################################################################
+# NAT Gateway
+################################################################################
+variable "create_nat_gateway" {
+  description = "NAT Gatewayを作成する場合はtrue"
+  type        = bool
+  default     = false
+
+  validation {
+    condition = (
+      !var.create_nat_gateway
+      || (
+        var.create_internet_gateway
+        && length(var.public_subnets) > 0
+        && length(var.private_subnets) > 0
+      )
+    )
+    error_message = "NAT Gatewayを作成する場合はcreate_internet_gateway=trueかつpublic_subnetsとprivate_subnetsに1つ以上指定してください"
+  }
+}
+
+variable "nat_gateway_subnet_index" {
+  description = "NAT Gatewayを配置するpublic_subnetsのインデックス"
+  type        = number
+  default     = 0
+
+  validation {
+    condition = (
+      !var.create_nat_gateway
+      || (
+        var.nat_gateway_subnet_index >= 0
+        && var.nat_gateway_subnet_index < length(var.public_subnets)
+      )
+    )
+    error_message = "nat_gateway_subnet_indexはpublic_subnetsの範囲内で指定してください"
+  }
+}
+
+################################################################################
 # Private Subnets
 ################################################################################
 variable "private_subnets" {
@@ -55,5 +102,10 @@ variable "public_subnets" {
   validation {
     condition     = alltrue([for cidr in var.public_subnets : can(cidrhost(cidr, 0))])
     error_message = "public_subnetsの各要素は有効なCIDR表記で指定してください"
+  }
+
+  validation {
+    condition     = length(var.public_subnets) == 0 || var.create_internet_gateway
+    error_message = "パブリックサブネットを作成する場合はcreate_internet_gatewayをtrueにしてください"
   }
 }
