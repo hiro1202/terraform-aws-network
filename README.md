@@ -1,23 +1,95 @@
 # terraform-aws-network
 
-AWS のネットワークリソースを作成する Terraform モジュール。
+VPC・サブネット・Internet Gateway・NAT Gateway を作成する Terraform モジュール。
 
-## 変数
+## Usage
 
-- `create_internet_gateway` (bool, default: `false`)
-パブリックサブネットを作成する場合は `true` が必須。
-- `create_nat_gateway` (bool, default: `false`)
-NAT Gatewayを作成する場合は `create_internet_gateway = true` かつ `public_subnets` と `private_subnets` に1つ以上指定が必要。
-- `nat_gateway_subnet_index` (number, default: `0`)
-NAT Gatewayを配置する `public_subnets` のインデックス。
+### プライベートサブネットのみ
 
-## テスト
+```hcl
+module "network" {
+  source = "git::https://github.com/hiro1202/terraform-aws-network.git"
+
+  name            = "my-app"
+  vpc_cidr        = "10.0.0.0/16"
+  private_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
+}
+```
+
+### パブリック・プライベート構成（NAT Gateway あり）
+
+```hcl
+module "network" {
+  source = "git::https://github.com/hiro1202/terraform-aws-network.git"
+
+  name            = "my-app"
+  vpc_cidr        = "10.0.0.0/16"
+  private_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
+  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24"]
+
+  create_internet_gateway = true
+  create_nat_gateway      = true
+}
+```
+
+## Testing
 
 ```bash
 terraform test
 ```
 
-## 要件
+<!-- BEGIN_TF_DOCS -->
+## Requirements
 
-- Terraform >= 1.0
-- AWS Provider >= 6.31.0
+| Name | Version |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.0 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.31.0 |
+
+## Providers
+
+| Name | Version |
+|------|---------|
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.30.0 |
+
+## Resources
+
+| Name | Type |
+|------|------|
+| [aws_eip.nat](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eip) | resource |
+| [aws_internet_gateway.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/internet_gateway) | resource |
+| [aws_nat_gateway.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/nat_gateway) | resource |
+| [aws_route.private_nat](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route) | resource |
+| [aws_route.public_internet](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route) | resource |
+| [aws_route_table.private](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table) | resource |
+| [aws_route_table.public](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table) | resource |
+| [aws_route_table_association.private](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table_association) | resource |
+| [aws_route_table_association.public](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table_association) | resource |
+| [aws_subnet.private](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet) | resource |
+| [aws_subnet.public](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet) | resource |
+| [aws_vpc.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc) | resource |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_create_internet_gateway"></a> [create\_internet\_gateway](#input\_create\_internet\_gateway) | Internet Gatewayを作成する場合はtrue | `bool` | `false` | no |
+| <a name="input_create_nat_gateway"></a> [create\_nat\_gateway](#input\_create\_nat\_gateway) | NAT Gatewayを作成する場合はtrue | `bool` | `false` | no |
+| <a name="input_enable_dns_hostnames"></a> [enable\_dns\_hostnames](#input\_enable\_dns\_hostnames) | VPCでDNSホスト名を有効にする場合はtrue | `bool` | `true` | no |
+| <a name="input_enable_dns_support"></a> [enable\_dns\_support](#input\_enable\_dns\_support) | VPCでDNSサポートを有効にする場合はtrue | `bool` | `true` | no |
+| <a name="input_name"></a> [name](#input\_name) | すべてのリソースの識別子として使用される名前 | `string` | n/a | yes |
+| <a name="input_private_subnets"></a> [private\_subnets](#input\_private\_subnets) | プライベートサブネットのCIDRブロックリスト | `list(string)` | `[]` | no |
+| <a name="input_public_subnets"></a> [public\_subnets](#input\_public\_subnets) | パブリックサブネットのCIDRブロックリスト | `list(string)` | `[]` | no |
+| <a name="input_vpc_cidr"></a> [vpc\_cidr](#input\_vpc\_cidr) | VPCのCIDRブロック | `string` | `"10.0.0.0/16"` | no |
+
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| <a name="output_private_subnet_cidrs"></a> [private\_subnet\_cidrs](#output\_private\_subnet\_cidrs) | プライベートサブネットのCIDRブロックリスト |
+| <a name="output_private_subnet_ids"></a> [private\_subnet\_ids](#output\_private\_subnet\_ids) | プライベートサブネットのIDリスト |
+| <a name="output_public_subnet_cidrs"></a> [public\_subnet\_cidrs](#output\_public\_subnet\_cidrs) | パブリックサブネットのCIDRブロックリスト |
+| <a name="output_public_subnet_ids"></a> [public\_subnet\_ids](#output\_public\_subnet\_ids) | パブリックサブネットのIDリスト |
+| <a name="output_vpc_cidr_block"></a> [vpc\_cidr\_block](#output\_vpc\_cidr\_block) | VPCのCIDRブロック |
+| <a name="output_vpc_id"></a> [vpc\_id](#output\_vpc\_id) | VPCのID |
+<!-- END_TF_DOCS -->
