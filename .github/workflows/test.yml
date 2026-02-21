@@ -6,13 +6,17 @@ on:
     paths:
       - '**.tf'
       - '**.tftest.hcl'
-      - '.github/workflows/terraform-test.yml'
+      - '.checkov.yaml'
+      - '.tflint.hcl'
+      - '.github/workflows/test.yml'
   push:
     branches: [main]
     paths:
       - '**.tf'
       - '**.tftest.hcl'
-      - '.github/workflows/terraform-test.yml'
+      - '.checkov.yaml'
+      - '.tflint.hcl'
+      - '.github/workflows/test.yml'
 
 permissions:
   contents: read
@@ -29,11 +33,22 @@ jobs:
         with:
           terraform_version: "1.12.1"  # チームで揃えるバージョンを固定
 
+      - uses: terraform-linters/setup-tflint@v4
+
       - name: Terraform Format Check
         run: terraform fmt -check -recursive -diff
 
+      - name: TFLint
+        run: tflint --recursive
+
+      - name: Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          config_file: .checkov.yaml
+
       - name: Terraform Init
-        run: terraform init
+        run: terraform init -backend=false
 
       - name: Terraform Validate
         run: terraform validate
