@@ -9,17 +9,10 @@ on:
       - '.checkov.yaml'
       - '.tflint.hcl'
       - '.github/workflows/test.yml'
-  push:
-    branches: [main]
-    paths:
-      - '**.tf'
-      - '**.tftest.hcl'
-      - '.checkov.yaml'
-      - '.tflint.hcl'
-      - '.github/workflows/test.yml'
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   test:
@@ -39,13 +32,19 @@ jobs:
         uses: terraform-linters/setup-tflint@v4
 
       - name: Terraform Format Check
+        id: fmt
         run: terraform fmt -check -recursive -diff
+        continue-on-error: true
 
       - name: TFLint
+        id: tflint
         run: tflint --init && tflint --recursive
+        continue-on-error: true
 
       - name: Checkov
+        id: checkov
         uses: bridgecrewio/checkov-action@v12
+        continue-on-error: true
         with:
           directory: .
           config_file: .checkov.yaml
@@ -54,7 +53,60 @@ jobs:
         run: terraform init -backend=false
 
       - name: Terraform Validate
+        id: validate
         run: terraform validate
+        continue-on-error: true
 
       - name: Terraform Test
+        id: test
         run: terraform test
+        continue-on-error: true
+
+      - name: Post PR Comment
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const results = [
+              { check: 'Terraform Format',   outcome: '${{ steps.fmt.outcome }}' },
+              { check: 'TFLint',             outcome: '${{ steps.tflint.outcome }}' },
+              { check: 'Checkov',            outcome: '${{ steps.checkov.outcome }}' },
+              { check: 'Terraform Validate', outcome: '${{ steps.validate.outcome }}' },
+              { check: 'Terraform Test',     outcome: '${{ steps.test.outcome }}' },
+            ];
+            const rows = results.map(r =>
+              `| ${r.check} | ${r.outcome === 'success' ? 'PASSED' : 'FAILED'} |`
+            ).join('\n');
+            const body = `## CI Results\n\n| Check | Result |\n|-------|--------|\n${rows}`;
+            const { data: comments } = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const existing = comments.find(c => c.body.startsWith('## CI Results'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                comment_id: existing.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body,
+              });
+            }
+
+      - name: Check Results
+        if: always()
+        run: |
+          if [[ "${{ steps.fmt.outcome }}" == "failure" || \
+                "${{ steps.tflint.outcome }}" == "failure" || \
+                "${{ steps.checkov.outcome }}" == "failure" || \
+                "${{ steps.validate.outcome }}" == "failure" || \
+                "${{ steps.test.outcome }}" == "failure" ]]; then
+            exit 1
+          fi
