@@ -39,13 +39,19 @@ jobs:
         uses: terraform-linters/setup-tflint@v4
 
       - name: Terraform Format Check
+        id: fmt
         run: terraform fmt -check -recursive -diff
+        continue-on-error: true
 
       - name: TFLint
+        id: tflint
         run: tflint --init && tflint --recursive
+        continue-on-error: true
 
       - name: Checkov
+        id: checkov
         uses: bridgecrewio/checkov-action@v12
+        continue-on-error: true
         with:
           directory: .
           config_file: .checkov.yaml
@@ -54,7 +60,35 @@ jobs:
         run: terraform init -backend=false
 
       - name: Terraform Validate
+        id: validate
         run: terraform validate
+        continue-on-error: true
 
       - name: Terraform Test
+        id: test
         run: terraform test
+        continue-on-error: true
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## CI Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Terraform Format | ${{ steps.fmt.outcome == 'success' && 'PASSED' || 'FAILED' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| TFLint           | ${{ steps.tflint.outcome == 'success' && 'PASSED' || 'FAILED' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Checkov          | ${{ steps.checkov.outcome == 'success' && 'PASSED' || 'FAILED' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Terraform Validate | ${{ steps.validate.outcome == 'success' && 'PASSED' || 'FAILED' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Terraform Test   | ${{ steps.test.outcome == 'success' && 'PASSED' || 'FAILED' }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check Results
+        if: always()
+        run: |
+          if [[ "${{ steps.fmt.outcome }}" == "failure" || \
+                "${{ steps.tflint.outcome }}" == "failure" || \
+                "${{ steps.checkov.outcome }}" == "failure" || \
+                "${{ steps.validate.outcome }}" == "failure" || \
+                "${{ steps.test.outcome }}" == "failure" ]]; then
+            exit 1
+          fi
