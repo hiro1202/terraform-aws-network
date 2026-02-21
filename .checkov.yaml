@@ -1,0 +1,10 @@
+# Scan targets
+framework:
+  - terraform
+download-external-modules: true
+
+# Prisma Cloud
+skip-download: true
+
+# Output
+quiet: true

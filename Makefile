@@ -15,6 +15,4 @@ test: init
 	terraform test
 
 checkov:
-	checkov -d . \
-	  --framework terraform \
-	  --download-external-modules true
+	checkov -d .
