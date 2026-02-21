@@ -20,7 +20,7 @@ variables {
 ################################################################################
 
 run "vpc_basic_settings" {
-  command = plan
+  command = apply
 
   assert {
     condition     = aws_vpc.this.cidr_block == "10.0.0.0/16"
@@ -39,7 +39,7 @@ run "vpc_basic_settings" {
 }
 
 run "vpc_disable_dns" {
-  command = plan
+  command = apply
 
   variables {
     enable_dns_hostnames = false
@@ -57,7 +57,7 @@ run "vpc_disable_dns" {
 ################################################################################
 
 run "subnets_multiple_azs" {
-  command = plan
+  command = apply
 
   assert {
     condition     = length(aws_subnet.private) == 3 && length(aws_subnet.public) == 3
@@ -86,7 +86,7 @@ run "subnets_multiple_azs" {
 }
 
 run "subnets_none_when_lists_empty" {
-  command = plan
+  command = apply
 
   variables {
     private_subnets = []
@@ -104,7 +104,7 @@ run "subnets_none_when_lists_empty" {
 ################################################################################
 
 run "igw_not_created_when_disabled" {
-  command = plan
+  command = apply
 
   variables {
     create_internet_gateway = false
@@ -123,7 +123,7 @@ run "igw_not_created_when_disabled" {
 }
 
 run "igw_created_when_enabled" {
-  command = plan
+  command = apply
 
   assert {
     condition     = length(aws_internet_gateway.this) == 1
@@ -146,7 +146,7 @@ run "igw_created_when_enabled" {
 ################################################################################
 
 run "natgw_not_created_when_disabled" {
-  command = plan
+  command = apply
 
   assert {
     condition     = length(aws_nat_gateway.this) == 0
@@ -165,7 +165,7 @@ run "natgw_not_created_when_disabled" {
 }
 
 run "natgw_created_when_enabled" {
-  command = plan
+  command = apply
 
   variables {
     create_nat_gateway = true
