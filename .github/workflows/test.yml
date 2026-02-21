@@ -9,17 +9,10 @@ on:
       - '.checkov.yaml'
       - '.tflint.hcl'
       - '.github/workflows/test.yml'
-  push:
-    branches: [main]
-    paths:
-      - '**.tf'
-      - '**.tftest.hcl'
-      - '.checkov.yaml'
-      - '.tflint.hcl'
-      - '.github/workflows/test.yml'
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   test:
@@ -69,18 +62,43 @@ jobs:
         run: terraform test
         continue-on-error: true
 
-      - name: Summary
+      - name: Post PR Comment
         if: always()
-        run: |
-          echo "## CI Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Check | Result |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Terraform Format | ${{ steps.fmt.outcome == 'success' && 'PASSED' || 'FAILED' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| TFLint           | ${{ steps.tflint.outcome == 'success' && 'PASSED' || 'FAILED' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Checkov          | ${{ steps.checkov.outcome == 'success' && 'PASSED' || 'FAILED' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Terraform Validate | ${{ steps.validate.outcome == 'success' && 'PASSED' || 'FAILED' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Terraform Test   | ${{ steps.test.outcome == 'success' && 'PASSED' || 'FAILED' }} |" >> $GITHUB_STEP_SUMMARY
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const results = [
+              { check: 'Terraform Format',   outcome: '${{ steps.fmt.outcome }}' },
+              { check: 'TFLint',             outcome: '${{ steps.tflint.outcome }}' },
+              { check: 'Checkov',            outcome: '${{ steps.checkov.outcome }}' },
+              { check: 'Terraform Validate', outcome: '${{ steps.validate.outcome }}' },
+              { check: 'Terraform Test',     outcome: '${{ steps.test.outcome }}' },
+            ];
+            const rows = results.map(r =>
+              `| ${r.check} | ${r.outcome === 'success' ? 'PASSED' : 'FAILED'} |`
+            ).join('\n');
+            const body = `## CI Results\n\n| Check | Result |\n|-------|--------|\n${rows}`;
+            const { data: comments } = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const existing = comments.find(c => c.body.startsWith('## CI Results'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                comment_id: existing.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body,
+              });
+            }
 
       - name: Check Results
         if: always()
