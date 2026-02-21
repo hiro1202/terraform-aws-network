@@ -1,4 +1,4 @@
-name: Terraform Test
+name: CI
 
 on:
   pull_request:
@@ -27,13 +27,16 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.12.1"  # チームで揃えるバージョンを固定
 
-      - uses: terraform-linters/setup-tflint@v4
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
 
       - name: Terraform Format Check
         run: terraform fmt -check -recursive -diff
