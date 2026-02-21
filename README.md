@@ -93,3 +93,7 @@ terraform test
 | <a name="output_vpc_cidr_block"></a> [vpc\_cidr\_block](#output\_vpc\_cidr\_block) | VPCのCIDRブロック |
 | <a name="output_vpc_id"></a> [vpc\_id](#output\_vpc\_id) | VPCのID |
 <!-- END_TF_DOCS -->
+
+## License
+
+MIT Licensed. See [LICENSE](LICENSE) for full details.
