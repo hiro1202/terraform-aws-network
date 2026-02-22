@@ -11,7 +11,7 @@ data "aws_availability_zones" "available" {
 ################################################################################
 
 resource "aws_vpc" "this" {
-  #checkov:skip=CKV2_AWS_11:VPC flow log is intentionally disabled (cost optimization)
+  #checkov:skip=CKV2_AWS_11:VPC flow logはコスト抑制のため意図的に無効化
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = var.enable_dns_hostnames
   enable_dns_support   = var.enable_dns_support
@@ -21,11 +21,9 @@ resource "aws_vpc" "this" {
   }
 }
 
+# デフォルトセキュリティグループはセキュリティ向上のためルールを削除
 resource "aws_default_security_group" "this" {
   vpc_id = aws_vpc.this.id
-
-  ingress = []
-  egress  = []
 
   tags = {
     Name = "${var.name}-default-sg"
