@@ -1,3 +1,7 @@
+test {
+  parallel = true
+}
+
 mock_provider "aws" {
   mock_data "aws_availability_zones" {
     defaults = {
@@ -6,13 +10,9 @@ mock_provider "aws" {
   }
 }
 
-# 共通デフォルト — 各runブロックでは差分のみ上書き
+# デフォルト変数値 — 各runブロックでは差分のみ上書き
 variables {
-  name                    = "my-app"
-  vpc_cidr                = "10.0.0.0/16"
-  create_internet_gateway = true
-  private_subnets         = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-  public_subnets          = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+  name = "my-app"
 }
 
 ################################################################################
@@ -22,9 +22,13 @@ variables {
 run "vpc_basic_settings" {
   command = apply
 
+  variables {
+    vpc_cidr = "192.168.0.0/16"
+  }
+
   assert {
-    condition     = aws_vpc.this.cidr_block == "10.0.0.0/16"
-    error_message = "VPCのCIDRは指定した値（10.0.0.0/16）と一致する必要があります"
+    condition     = aws_vpc.this.cidr_block == "192.168.0.0/16"
+    error_message = "VPCのCIDRは指定した値（192.168.0.0/16）と一致する必要があります"
   }
 
   assert {
@@ -48,30 +52,56 @@ run "vpc_disable_dns" {
 
   assert {
     condition     = aws_vpc.this.enable_dns_hostnames == false && aws_vpc.this.enable_dns_support == false
-    error_message = "DNS設定は無効化できる必要があります（false）"
+    error_message = "DNS設定は無効化できる必要があります"
+  }
+}
+
+run "default_sg_has_no_rules" {
+  command = apply
+
+  assert {
+    condition     = length(aws_default_security_group.this.ingress) == 0
+    error_message = "デフォルトSGにingressルールが残っています"
+  }
+
+  assert {
+    condition     = length(aws_default_security_group.this.egress) == 0
+    error_message = "デフォルトSGにegressルールが残っています"
+  }
+
+  assert {
+    condition     = aws_default_security_group.this.tags["Name"] == "my-app-default-sg"
+    error_message = "デフォルトSGのNameタグは「{name}-default-sg」の形式である必要があります"
   }
 }
 
 ################################################################################
-# Subnets - 正常系
+# Subnets
 ################################################################################
 
 run "subnets_multiple_azs" {
   command = apply
 
+  variables {
+    vpc_cidr                = "192.168.0.0/16"
+    create_internet_gateway = true
+    private_subnets         = ["192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24"]
+    public_subnets          = ["192.168.101.0/24", "192.168.102.0/24", "192.168.103.0/24"]
+  }
+
   assert {
     condition     = length(aws_subnet.private) == 3 && length(aws_subnet.public) == 3
-    error_message = "サブネット数は提供されたCIDRの数と一致する必要があります"
+    error_message = "各サブネットは3つずつ作成される必要があります"
   }
 
   assert {
-    condition     = toset([for s in aws_subnet.private : s.availability_zone]) == toset(["ap-northeast-1a", "ap-northeast-1c", "ap-northeast-1d"])
-    error_message = "プライベートサブネットはすべてのAZに分散配置される必要があります（ap-northeast-1a/1c/1d）"
+    condition     = toset([for s in aws_subnet.private : s.availability_zone]) == toset(data.aws_availability_zones.available.names)
+    error_message = "プライベートサブネットは3AZに分散配置される必要があります"
   }
 
   assert {
-    condition     = toset([for s in aws_subnet.public : s.availability_zone]) == toset(["ap-northeast-1a", "ap-northeast-1c", "ap-northeast-1d"])
-    error_message = "パブリックサブネットはすべてのAZに分散配置される必要があります（ap-northeast-1a/1c/1d）"
+    condition     = toset([for s in aws_subnet.public : s.availability_zone]) == toset(data.aws_availability_zones.available.names)
+    error_message = "パブリックサブネットは3AZに分散配置される必要があります"
   }
 
   assert {
@@ -95,7 +125,7 @@ run "subnets_none_when_lists_empty" {
 
   assert {
     condition     = length(aws_subnet.private) == 0 && length(aws_subnet.public) == 0
-    error_message = "リストが空の場合、サブネットは作成されない必要があります（0件）"
+    error_message = "リストが空の場合、サブネットは作成されない必要があります"
   }
 }
 
@@ -108,7 +138,6 @@ run "igw_not_created_when_disabled" {
 
   variables {
     create_internet_gateway = false
-    public_subnets          = []
   }
 
   assert {
@@ -125,6 +154,12 @@ run "igw_not_created_when_disabled" {
 run "igw_created_when_enabled" {
   command = apply
 
+  variables {
+    create_internet_gateway = true
+    vpc_cidr                = "192.168.0.0/16"
+    public_subnets          = ["192.168.101.0/24"]
+  }
+
   assert {
     condition     = length(aws_internet_gateway.this) == 1
     error_message = "create_internet_gateway=trueの場合、IGWが1つ作成される必要があります"
@@ -137,7 +172,7 @@ run "igw_created_when_enabled" {
 
   assert {
     condition     = length(aws_route.public_internet) == 1
-    error_message = "create_internet_gateway=trueの場合、パブリックルート（0.0.0.0/0）が作成される必要があります"
+    error_message = "create_internet_gateway=trueかつpublic_subnetsが空でない場合、パブリックルート（0.0.0.0/0）が作成される必要があります"
   }
 }
 
@@ -168,7 +203,11 @@ run "natgw_created_when_enabled" {
   command = apply
 
   variables {
-    create_nat_gateway = true
+    create_nat_gateway      = true
+    create_internet_gateway = true
+    vpc_cidr                = "192.168.0.0/16"
+    public_subnets          = ["192.168.101.0/24", "192.168.102.0/24", "192.168.103.0/24"]
+    private_subnets         = ["192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24"]
   }
 
   assert {
