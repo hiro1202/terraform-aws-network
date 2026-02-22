@@ -90,10 +90,9 @@ variable "create_nat_gateway" {
       || (
         var.create_internet_gateway
         && length(var.public_subnets) > 0
-        && length(var.private_subnets) > 0
       )
     )
-    error_message = "NAT Gatewayを作成する場合はcreate_internet_gateway=trueかつpublic_subnetsとprivate_subnetsに1つ以上指定してください"
+    error_message = "NAT Gatewayを作成する場合はcreate_internet_gateway=trueかつpublic_subnetsを1つ以上指定してください"
   }
 }
 
