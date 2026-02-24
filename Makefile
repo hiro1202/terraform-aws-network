@@ -1,6 +1,6 @@
-.PHONY: init fmt fmt-diff validate test checkov ci
+.PHONY: init fmt fmt-diff validate test tflint checkov ci
 
-ci: fmt validate test checkov
+ci: fmt validate test tflint checkov
 
 init:
 	terraform init -backend=false
@@ -13,6 +13,9 @@ validate: init
 
 test: init
 	terraform test
+
+tflint:
+	tflint --init && tflint --recursive
 
 checkov:
 	checkov -d .

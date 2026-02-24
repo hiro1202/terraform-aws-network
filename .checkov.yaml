@@ -1,10 +1,14 @@
-# Scan targets
+# 参考: https://www.checkov.io/2.Basics/CLI%20Command%20Reference.html
+
+# スキャン対象のフレームワークを指定
 framework:
   - terraform
+
+# 外部モジュールをダウンロードしてスキャン対象に含める
 download-external-modules: true
 
-# Prisma Cloud
+# Prisma Cloud からデータをダウンロードしない
 skip-download: true
 
-# Output
+# 失敗したチェックのみを出力する
 quiet: true

@@ -40,8 +40,9 @@ module "network" {
 | `make fmt`       | `terraform fmt -recursive -diff` を実行             |
 | `make validate`  | `make init` 後に `terraform validate` を実行                     |
 | `make test`      | `make init` 後に `terraform test` を実行                  |
-| `make checkov`   | Checkov でセキュリティスキャンを実行     |
-| `make ci`        | すべてのチェックを実行（fmt / validate / test / checkov） |
+| `make tflint`    | `tflint --init && tflint --recursive` を実行                  |
+| `make checkov`   | `checkov -d .` を実行     |
+| `make ci`        | すべてのチェックを実行（fmt / validate / test / tflint / checkov） |
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
