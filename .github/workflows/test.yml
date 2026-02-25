@@ -26,7 +26,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.12.1"  # チームで揃えるバージョンを固定
+          terraform_version: "1.12.1"
 
       - name: Setup TFLint
         uses: terraform-linters/setup-tflint@v4
