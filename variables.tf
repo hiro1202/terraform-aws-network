@@ -95,4 +95,3 @@ variable "create_nat_gateway" {
     error_message = "NAT Gatewayを作成する場合はcreate_internet_gateway=trueかつpublic_subnetsを1つ以上指定してください"
   }
 }
-

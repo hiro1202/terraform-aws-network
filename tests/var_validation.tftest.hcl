@@ -1,4 +1,4 @@
-# Variable Validation 
+# Variable Validation
 
 test {
   parallel = true

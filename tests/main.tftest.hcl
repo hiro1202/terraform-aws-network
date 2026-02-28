@@ -235,4 +235,3 @@ run "natgw_created_when_enabled" {
     error_message = "create_nat_gateway=trueの場合、プライベートサブネットごとにNATルートが作成される必要があります"
   }
 }
-
